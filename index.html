@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+    <title>Projeto Novo Peitoral</title>
+    <meta name="description" content="Sistema direto para redução de gordura peitoral e fortalecimento torácico." />
+    
+    <!-- PWA & Mobile Meta Tags -->
+    <meta name="theme-color" content="#ff5107" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NovoPeitoral" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Projeto Novo Peitoral" />
+    <meta property="og:description" content="Sistema direto para redução de gordura peitoral e fortalecimento torácico." />
+    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta property="og:type" content="website" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                400: '#ff7841',
+                500: '#ff5107', // Orange requested
+                600: '#e64606',
+                700: '#cc3d05',
+              },
+              surface: '#1a1a1a', // Dark grey requested
+              background: '#000000', // Black requested
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Smooth scrolling */
+      html { scroll-behavior: smooth; }
+      /* Hide scrollbar for clean mobile look but keep functionality */
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+    </style>
+  </head>
+  <body class="bg-black text-white font-sans antialiased selection:bg-primary-500 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
