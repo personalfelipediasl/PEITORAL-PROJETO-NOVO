@@ -64,11 +64,11 @@ const ScrollToTop = () => {
 
 const BrandLogo = () => (
   <div className="flex flex-col items-center justify-center mb-6">
-    <div className="w-full max-w-[280px] sm:max-w-[320px] px-2 flex items-center justify-center">
+    <div className="w-full max-w-[240px] sm:max-w-[280px] px-2 flex items-center justify-center">
       <img 
-        src="/assets/aistudio/0530F679-55A0-443F-A876-FB7B2F0E10F8_c696539e.png" 
+        src="/assets/aistudio/Untitled_design_d95a02a8.png" 
         alt="Projeto Novo Peitoral" 
-        className="w-full h-auto object-contain drop-shadow-[0_4px_25px_rgba(255,81,7,0.35)] select-none pointer-events-none"
+        className="w-full h-auto object-contain rounded-3xl drop-shadow-[0_8px_32px_rgba(255,81,7,0.4)] select-none pointer-events-none transition-transform hover:scale-105 duration-300"
         loading="eager"
       />
     </div>
