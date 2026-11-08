@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-route
 import { Heart, CheckCircle, Info, Activity, ClipboardList, ChevronRight, Search, X, Dumbbell, ShieldCheck, ListChecks, Play, Pause, ChevronDown, ChevronUp, Flame, Calendar, ArrowRight, AlertCircle, Clock, Utensils, ShieldAlert, Calculator } from 'lucide-react';
 import { EXERCISES, TRANSLATIONS, PREDEFINED_WORKOUTS } from './constants';
 import { Exercise, UserData, Language, ReadyWorkout } from './types';
-import { Button, VideoPlayer, ScreenWrapper, Header, getIcon, Timer, SetCard, TDEECalculator, TopPWAInstallBanner, playSuccessChime, triggerHaptic } from './components';
+import { Button, VideoPlayer, ScreenWrapper, Header, getIcon, Timer, SetCard, TDEECalculator, TopPWAInstallBanner, playSuccessChime, triggerHaptic, AppTopBar } from './components';
 
 // --- Language Context ---
 interface LanguageContextType {
@@ -217,19 +217,39 @@ const HomeScreen: React.FC = () => {
 
   return (
     <ScreenWrapper className="justify-between bg-black relative">
-      {/* Top Header with PWA Install Button and Language Switcher */}
-      <div className="w-full">
-        <div className="flex justify-between items-center px-6 pt-4 pb-1">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400">Método Secar</span>
+      {/* Top Bar protecting against smartphone notch / status bar / Dynamic Island */}
+      <AppTopBar 
+        leftElement={
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary-500 animate-pulse shadow-md shadow-primary-500/50" />
+            <span className="text-xs font-black uppercase tracking-wider text-neutral-200">
+              Método Secar
+            </span>
           </div>
-          <div className="flex gap-2 bg-neutral-900/80 px-2 py-1 rounded-full border border-neutral-800">
-            <button onClick={() => setLanguage('pt')} className={`text-xl hover:scale-110 transition-transform ${language === 'pt' ? 'opacity-100 scale-110' : 'opacity-40 grayscale'}`}>🇧🇷</button>
-            <button onClick={() => setLanguage('en')} className={`text-xl hover:scale-110 transition-transform ${language === 'en' ? 'opacity-100 scale-110' : 'opacity-40 grayscale'}`}>🇺🇸</button>
+        }
+        rightElement={
+          <div className="flex gap-2 bg-neutral-900/90 px-2.5 py-1 rounded-full border border-neutral-800 shadow-sm">
+            <button 
+              type="button"
+              onClick={() => setLanguage('pt')} 
+              className={`text-lg hover:scale-110 transition-transform ${language === 'pt' ? 'opacity-100 scale-110' : 'opacity-40 grayscale'}`}
+              title="Português"
+            >
+              🇧🇷
+            </button>
+            <button 
+              type="button"
+              onClick={() => setLanguage('en')} 
+              className={`text-lg hover:scale-110 transition-transform ${language === 'en' ? 'opacity-100 scale-110' : 'opacity-40 grayscale'}`}
+              title="English"
+            >
+              🇺🇸
+            </button>
           </div>
-        </div>
+        }
+      />
 
+      <div className="w-full">
         {/* Compact PWA Mobile Install Shortcut Button on Home Screen */}
         <TopPWAInstallBanner t={t} />
       </div>
@@ -247,7 +267,10 @@ const HomeScreen: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-6 pb-12">
+      <div 
+        className="p-6"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 32px)' }}
+      >
         <Button fullWidth onClick={() => navigate('/legal')} className="h-16 text-xl">
           {t('startBtn')}
         </Button>
@@ -262,7 +285,7 @@ const LegalScreen: React.FC = () => {
   const { t } = useLanguage();
   return (
     <ScreenWrapper className="bg-black">
-      <Header onBack={() => navigate('/')} />
+      <Header title="Aviso Obrigatório" onBack={() => navigate('/')} />
       <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center justify-center text-center space-y-6">
         <div className="p-4 bg-primary-500/10 rounded-full border border-primary-500/30">
           <ShieldAlert className="w-12 h-12 text-primary-500" />
@@ -480,7 +503,16 @@ const ReadyWorkoutExecutionScreen: React.FC = () => {
 
   return (
     <ScreenWrapper>
-      <Header title={workout.title[language]} onBack={() => navigate('/menu')} />
+      <Header 
+        title={workout.title[language]} 
+        subtitle="Método Secar"
+        onBack={() => navigate('/menu')} 
+        rightElement={
+          <span className="px-2.5 py-1 rounded-full bg-primary-500/15 border border-primary-500/30 text-primary-400 text-[10px] font-black uppercase tracking-wider">
+            {totalCompletedExercises}/{exercises.length}
+          </span>
+        }
+      />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-28 no-scrollbar">
         
         {/* Mensagem de Ajuste de Intensidade: Desaparece quando um exercício é aberto */}
@@ -541,7 +573,10 @@ const ReadyWorkoutExecutionScreen: React.FC = () => {
         )}
       </div>
 
-      <div className="p-4 bg-black/95 backdrop-blur-md border-t border-neutral-800 sticky bottom-0 z-20">
+      <div 
+        className="p-4 bg-black/95 backdrop-blur-md border-t border-neutral-800 sticky bottom-0 z-20"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)' }}
+      >
         <Button 
           fullWidth 
           onClick={() => navigate('/final')}
@@ -558,16 +593,20 @@ const FinalScreen: React.FC<{ clearWorkout: () => void }> = ({ clearWorkout }) =
   const navigate = useNavigate();
   const { t } = useLanguage();
   return (
-    <ScreenWrapper className="justify-center bg-black text-white p-8">
-      <div className="text-center space-y-10">
-        <div className="w-28 h-28 bg-surface rounded-full mx-auto flex items-center justify-center shadow-2xl shadow-primary-500/20 mb-6 border border-neutral-800">
+    <ScreenWrapper className="bg-black text-white">
+      <Header title="Treino Finalizado" onBack={() => { clearWorkout(); navigate('/'); }} />
+      <div className="flex-1 flex flex-col justify-center items-center text-center p-8 space-y-8">
+        <div className="w-28 h-28 bg-surface rounded-full mx-auto flex items-center justify-center shadow-2xl shadow-primary-500/20 mb-2 border border-neutral-800">
           <CheckCircle className="w-16 h-16 text-primary-500" />
         </div>
         <div>
-          <h2 className="text-4xl font-bold mb-6 uppercase tracking-tighter">{t('congratsTitle')}</h2>
-          <p className="text-neutral-400 text-xl leading-relaxed">{t('congratsDesc')}</p>
+          <h2 className="text-4xl font-bold mb-4 uppercase tracking-tighter">{t('congratsTitle')}</h2>
+          <p className="text-neutral-400 text-lg leading-relaxed max-w-xs mx-auto">{t('congratsDesc')}</p>
         </div>
-        <div className="space-y-6 pt-8">
+        <div 
+          className="w-full pt-4"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)' }}
+        >
           <Button fullWidth onClick={() => { clearWorkout(); navigate('/'); }}>{t('backHome')}</Button>
         </div>
       </div>

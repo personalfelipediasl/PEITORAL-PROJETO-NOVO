@@ -928,23 +928,94 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ videoUrl, l
   return null;
 }, (prevProps, nextProps) => prevProps.videoUrl === nextProps.videoUrl);
 
+// --- App Top Bar (Dedicated top bar that protects against smartphone status bar / notch / Dynamic Island) ---
+export const AppTopBar: React.FC<{
+  leftElement?: React.ReactNode;
+  rightElement?: React.ReactNode;
+  className?: string;
+}> = ({ leftElement, rightElement, className = '' }) => (
+  <div 
+    className={`sticky top-0 z-50 bg-black/95 backdrop-blur-xl border-b border-neutral-800/80 w-full transition-all shrink-0 ${className}`}
+    style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}
+  >
+    <div className="px-5 py-3 flex items-center justify-between min-h-[52px]">
+      <div className="flex items-center gap-2 min-w-0">
+        {leftElement || (
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary-500 animate-pulse shadow-md shadow-primary-500/50" />
+            <span className="text-xs font-black uppercase tracking-wider text-neutral-200">
+              Projeto Novo Peitoral
+            </span>
+          </div>
+        )}
+      </div>
+      {rightElement && (
+        <div className="flex items-center gap-2.5 shrink-0">
+          {rightElement}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 // --- Layout Wrapper ---
 export const ScreenWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`min-h-screen max-w-md mx-auto bg-black shadow-2xl overflow-hidden flex flex-col relative ${className}`}>
+  <div 
+    className={`min-h-screen max-w-md mx-auto bg-black shadow-2xl overflow-hidden flex flex-col relative ${className}`}
+    style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+  >
     {children}
   </div>
 );
 
-// --- Header ---
-export const Header: React.FC<{ title?: string; onBack?: () => void }> = ({ title, onBack }) => (
-  <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-neutral-800 px-4 py-4 flex items-center justify-between">
-    <div className="flex items-center gap-3">
-      {onBack && (
-        <button onClick={onBack} className="p-2 -ml-2 hover:bg-neutral-900 rounded-full transition-colors text-white">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
+// --- Header (Smartphone Safe-Area Header with Top Bar) ---
+export const Header: React.FC<{ 
+  title?: string; 
+  subtitle?: string;
+  onBack?: () => void;
+  rightElement?: React.ReactNode;
+}> = ({ title, subtitle, onBack, rightElement }) => (
+  <header 
+    className="sticky top-0 z-50 bg-black/95 backdrop-blur-xl border-b border-neutral-800/90 w-full transition-all shrink-0"
+    style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}
+  >
+    <div className="px-4 py-3 flex items-center justify-between min-h-[54px]">
+      <div className="flex items-center gap-3 min-w-0">
+        {onBack && (
+          <button 
+            type="button"
+            onClick={onBack} 
+            className="p-2 -ml-2 hover:bg-neutral-900 rounded-full transition-colors text-white active:scale-95 shrink-0 cursor-pointer"
+            aria-label="Voltar"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+        )}
+        <div className="min-w-0">
+          {title ? (
+            <h1 className="text-base sm:text-lg font-black uppercase text-white truncate tracking-tight leading-tight">
+              {title}
+            </h1>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
+              <span className="text-xs font-black uppercase tracking-wider text-neutral-300">
+                Projeto Novo Peitoral
+              </span>
+            </div>
+          )}
+          {subtitle && (
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary-500 truncate">
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+      {rightElement && (
+        <div className="flex items-center gap-2 shrink-0">
+          {rightElement}
+        </div>
       )}
-      {title && <h1 className="text-xl font-bold text-white truncate">{title}</h1>}
     </div>
-  </div>
+  </header>
 );
