@@ -1,9 +1,9 @@
-import React, { useState, useEffect, createContext, useContext, useMemo } from 'react';
+import React, { useState, useEffect, createContext, useContext, useMemo, useCallback } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Heart, CheckCircle, Info, Activity, ClipboardList, ChevronRight, Search, X, Dumbbell, ShieldCheck, ListChecks, Play, Pause, ChevronDown, ChevronUp, Flame, Calendar, ArrowRight, AlertCircle, Clock, Utensils, ShieldAlert, Calculator } from 'lucide-react';
 import { EXERCISES, TRANSLATIONS, PREDEFINED_WORKOUTS } from './constants';
 import { Exercise, UserData, Language, ReadyWorkout } from './types';
-import { Button, VideoPlayer, ScreenWrapper, Header, getIcon, Timer, SetCard, TDEECalculator, TopPWAInstallBanner } from './components';
+import { Button, VideoPlayer, ScreenWrapper, Header, getIcon, Timer, SetCard, TDEECalculator, TopPWAInstallBanner, playSuccessChime, triggerHaptic } from './components';
 
 // --- Language Context ---
 interface LanguageContextType {
@@ -75,7 +75,7 @@ const BrandLogo = () => (
   </div>
 );
 
-// --- Exercise Item Component (Handles sync between Timer and Video) ---
+// --- Exercise Item Component ---
 const ExerciseItem: React.FC<{ 
   exercise: Exercise; 
   index: number; 
@@ -84,55 +84,124 @@ const ExerciseItem: React.FC<{
   language: Language;
   t: (key: string) => string;
   videoLabels: any;
-}> = ({ exercise, index, isOpen, onToggle, language, t, videoLabels }) => {
-  const [isFinished, setIsFinished] = useState(false);
+  sets: [boolean, boolean, boolean];
+  onToggleSet: (setIndex: number) => void;
+  onAutoCompleteSet: () => void;
+}> = ({ 
+  exercise, 
+  index, 
+  isOpen, 
+  onToggle, 
+  language, 
+  t, 
+  videoLabels, 
+  sets, 
+  onToggleSet, 
+  onAutoCompleteSet 
+}) => {
+  const completedCount = sets.filter(Boolean).length;
+  const isAllDone = completedCount === 3;
+  const activeSetNumber = Math.min(completedCount + 1, 3);
 
   return (
-    <div className={`rounded-2xl border transition-all duration-300 overflow-hidden mb-4 ${isOpen ? 'bg-surface border-primary-500 shadow-lg shadow-primary-500/10' : 'bg-surface border-neutral-800'}`}>
-      <button onClick={onToggle} className="w-full p-4 flex items-center justify-between bg-surface">
-        <div className="flex items-center gap-4">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${isOpen ? 'bg-primary-500 text-white' : 'bg-neutral-800 text-neutral-500'}`}>{index + 1}</div>
-          <h3 className={`text-lg font-bold text-left ${isOpen ? 'text-white' : 'text-neutral-300'}`}>{exercise.name[language]}</h3>
+    <div 
+      id={`exercise-item-${index}`}
+      className={`rounded-2xl border transition-all duration-300 overflow-hidden mb-4 scroll-mt-20 ${
+        isOpen 
+          ? 'bg-surface border-primary-500 shadow-xl shadow-primary-500/10' 
+          : isAllDone
+            ? 'bg-surface/90 border-neutral-800'
+            : 'bg-surface border-neutral-800 hover:border-neutral-700'
+      }`}
+    >
+      <button 
+        type="button"
+        onClick={onToggle} 
+        className="w-full p-4 flex items-center justify-between bg-surface cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-3.5">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${
+            isAllDone
+              ? 'bg-green-500 text-white'
+              : isOpen 
+                ? 'bg-primary-500 text-white' 
+                : 'bg-neutral-800 text-neutral-400'
+          }`}>
+            {isAllDone ? '✓' : index + 1}
+          </div>
+          <div className="text-left">
+            <h3 className={`text-base sm:text-lg font-bold leading-tight ${isOpen ? 'text-white' : 'text-neutral-200'}`}>
+              {exercise.name[language]}
+            </h3>
+            {completedCount > 0 && !isOpen && (
+              <span className={`text-[10px] font-black uppercase tracking-wider block mt-0.5 ${isAllDone ? 'text-green-400' : 'text-primary-500'}`}>
+                {isAllDone ? '3/3 Concluído' : `${completedCount}/3 Séries`}
+              </span>
+            )}
+          </div>
         </div>
-        {isOpen ? <ChevronUp className="text-primary-500" /> : <ChevronDown className="text-neutral-500" />}
+        <div className="flex items-center gap-2">
+          {isAllDone && (
+            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 text-[10px] font-black uppercase">
+              3/3 Concluído
+            </span>
+          )}
+          {isOpen ? <ChevronUp className="text-primary-500 w-5 h-5" /> : <ChevronDown className="text-neutral-500 w-5 h-5" />}
+        </div>
       </button>
+
       {isOpen && (
         <div className="animate-in slide-in-from-top-2 duration-200">
-          <div className="aspect-video bg-black">
+          {/* Exercise Video: Starts playing automatically when accordion opens */}
+          <div className="aspect-video bg-black relative">
             <VideoPlayer 
               videoUrl={exercise.videoUrl} 
-              isFinished={isFinished} 
-              onReset={() => setIsFinished(false)}
               labels={videoLabels} 
             />
           </div>
+
           <div className="p-4 space-y-4">
-             <div className="bg-black/30 p-2 rounded-2xl border border-neutral-800/50">
+             {/* Timer Component - user clicks to start */}
+             <div className="bg-black/40 p-2.5 rounded-2xl border border-neutral-800/80">
                <Timer 
-                 title={t('timerTitle')} 
                  hint={t('timerHint')} 
-                 onReachedGoal={(reached) => setIsFinished(reached)}
+                 onReachedGoal={onAutoCompleteSet}
+                 activeSetNumber={activeSetNumber}
+                 isAllCompleted={isAllDone}
                />
              </div>
 
+             {/* Execution Tip */}
              <div className="bg-black/50 p-4 rounded-xl border border-neutral-800">
-                <h4 className="text-primary-500 font-bold uppercase text-xs tracking-wider mb-2">{t('quickFixLabel')}</h4>
+                <h4 className="text-primary-500 font-bold uppercase text-xs tracking-wider mb-1.5">{t('quickFixLabel')}</h4>
                 <p className="text-white text-sm leading-relaxed">{exercise.quickFix[language]}</p>
              </div>
              
+             {/* 3 Sets Grid */}
              <div className="pt-2">
-                <p className="text-neutral-500 text-[10px] uppercase font-black mb-3 tracking-widest text-center">{t('setsRecommended')}</p>
-                <div className="grid grid-cols-3 gap-2 pb-2">
-                   {[...Array(3)].map((_, i) => (
+                <p className="text-neutral-400 text-[10px] uppercase font-black mb-3 tracking-widest text-center">
+                  {t('setsRecommended')}
+                </p>
+                <div className="grid grid-cols-3 gap-2 pb-1">
+                   {[0, 1, 2].map((setIdx) => (
                      <SetCard 
-                        key={i} 
-                        index={i} 
+                        key={setIdx} 
+                        index={setIdx} 
                         serieLabel={t('serie')}
                         executionTimeLabel={t('executionTimeLabel')}
                         intervalLabel={t('intervalRecommended')}
+                        isDone={sets[setIdx]}
+                        onToggle={() => onToggleSet(setIdx)}
                      />
                    ))}
                 </div>
+                {isAllDone && (
+                  <div className="mt-3 p-3 rounded-xl bg-green-500/15 border border-green-500/40 text-center animate-in zoom-in duration-300">
+                    <p className="text-xs font-black uppercase text-green-400 tracking-wide">
+                      {t('allSetsCompletedNotice')}
+                    </p>
+                  </div>
+                )}
              </div>
           </div>
         </div>
@@ -305,9 +374,21 @@ const ReadyWorkoutExecutionScreen: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const workout = PREDEFINED_WORKOUTS[0];
-  const [openId, setOpenId] = useState<string | null>(null);
+  const exercises = useMemo(() => {
+    return workout.exercises.map(id => EXERCISES.find(e => e.id === id)).filter((e): e is Exercise => !!e);
+  }, [workout.exercises]);
 
-  const exercises = workout.exercises.map(id => EXERCISES.find(e => e.id === id)).filter((e): e is Exercise => !!e);
+  // Default to first exercise open so video autoplays and user can start immediately
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  // Sets progress per exercise: exerciseIndex -> [boolean, boolean, boolean]
+  const [exerciseProgress, setExerciseProgress] = useState<Record<number, [boolean, boolean, boolean]>>(() => {
+    const init: Record<number, [boolean, boolean, boolean]> = {};
+    exercises.forEach((_, idx) => {
+      init[idx] = [false, false, false];
+    });
+    return init;
+  });
 
   const videoLabels = useMemo(() => ({
     tapToWatch: t('tapToWatch'),
@@ -320,13 +401,90 @@ const ReadyWorkoutExecutionScreen: React.FC = () => {
     keepGoing: t('keepGoing')
   }), [t]);
 
+  const getSets = useCallback((idx: number): [boolean, boolean, boolean] => {
+    return exerciseProgress[idx] || [false, false, false];
+  }, [exerciseProgress]);
+
+  // Handler for automatically marking a set as completed when the timer hits 40 seconds
+  const handleAutoCompleteSet = useCallback((exerciseIdx: number) => {
+    setExerciseProgress(prev => {
+      const current = prev[exerciseIdx] || [false, false, false];
+      const nextSetIdx = current.findIndex(done => !done);
+      if (nextSetIdx === -1) return prev; // All 3 already done
+
+      const updated: [boolean, boolean, boolean] = [current[0], current[1], current[2]];
+      updated[nextSetIdx] = true;
+
+      // When the 3rd set is completed:
+      // "Sempre que a terceira série foi concluída, feche a aba do exercício concluído e abra o exercício seguinte. Mas não inicie o cronômetro, pois essa ação será do usuário."
+      if (nextSetIdx === 2) {
+        setTimeout(() => {
+          if (exerciseIdx + 1 < exercises.length) {
+            setOpenIndex(exerciseIdx + 1);
+            setTimeout(() => {
+              const el = document.getElementById(`exercise-item-${exerciseIdx + 1}`);
+              el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 120);
+          } else {
+            // All exercises completed
+            setOpenIndex(null);
+          }
+        }, 850);
+      }
+
+      return {
+        ...prev,
+        [exerciseIdx]: updated
+      };
+    });
+  }, [exercises.length]);
+
+  // Handler for manual tap on a set card
+  const handleToggleSet = useCallback((exerciseIdx: number, setIdx: number) => {
+    setExerciseProgress(prev => {
+      const current = prev[exerciseIdx] || [false, false, false];
+      const updated: [boolean, boolean, boolean] = [current[0], current[1], current[2]];
+      const nextVal = !updated[setIdx];
+      updated[setIdx] = nextVal;
+
+      // If completing the 3rd set via tap:
+      if (nextVal && updated[0] && updated[1] && updated[2]) {
+        playSuccessChime();
+        triggerHaptic();
+        setTimeout(() => {
+          if (exerciseIdx + 1 < exercises.length) {
+            setOpenIndex(exerciseIdx + 1);
+            setTimeout(() => {
+              const el = document.getElementById(`exercise-item-${exerciseIdx + 1}`);
+              el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 120);
+          } else {
+            setOpenIndex(null);
+          }
+        }, 850);
+      }
+
+      return {
+        ...prev,
+        [exerciseIdx]: updated
+      };
+    });
+  }, [exercises.length]);
+
+  const totalCompletedExercises = exercises.filter((_, idx) => {
+    const s = exerciseProgress[idx];
+    return s && s[0] && s[1] && s[2];
+  }).length;
+
+  const isWorkoutAllDone = totalCompletedExercises === exercises.length;
+
   return (
     <ScreenWrapper>
       <Header title={workout.title[language]} onBack={() => navigate('/menu')} />
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-28 no-scrollbar">
         
         {/* Mensagem de Ajuste de Intensidade: Desaparece quando um exercício é aberto */}
-        {openId === null && (
+        {openIndex === null && (
           <div className="bg-primary-500/10 border border-primary-500/30 p-4 rounded-xl animate-in fade-in zoom-in duration-300">
             <div className="flex items-center gap-2 mb-2">
               <Info className="w-4 h-4 text-primary-500" />
@@ -338,23 +496,59 @@ const ReadyWorkoutExecutionScreen: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-4">
+        {/* Global Workout Progress bar */}
+        <div className="space-y-1.5 px-1 pt-1">
+          <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-neutral-400">
+            <span>Progresso do Treino</span>
+            <span className="text-primary-500">{totalCompletedExercises} de {exercises.length} Concluídos</span>
+          </div>
+          <div className="w-full h-2 bg-neutral-900 rounded-full overflow-hidden border border-neutral-800">
+            <div 
+              className="h-full bg-gradient-to-r from-primary-600 to-primary-500 transition-all duration-500 rounded-full"
+              style={{ width: `${Math.max(4, (totalCompletedExercises / exercises.length) * 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Exercises list */}
+        <div className="mt-4 space-y-3">
           {exercises.map((exercise, index) => (
             <ExerciseItem 
               key={`${exercise.id}-${index}`}
               exercise={exercise}
               index={index}
-              isOpen={openId === `${exercise.id}-${index}`}
-              onToggle={() => setOpenId(openId === `${exercise.id}-${index}` ? null : `${exercise.id}-${index}`)}
+              isOpen={openIndex === index}
+              onToggle={() => setOpenIndex(openIndex === index ? null : index)}
               language={language}
               t={t}
               videoLabels={videoLabels}
+              sets={getSets(index)}
+              onToggleSet={(setIdx) => handleToggleSet(index, setIdx)}
+              onAutoCompleteSet={() => handleAutoCompleteSet(index)}
             />
           ))}
         </div>
+
+        {isWorkoutAllDone && (
+          <div className="p-5 rounded-2xl bg-green-500/15 border border-green-500/40 text-center animate-in zoom-in duration-300 space-y-2 mt-4">
+            <p className="text-sm font-black uppercase text-green-400">
+              {t('workoutFinishedNotice')}
+            </p>
+            <p className="text-xs text-neutral-300 font-medium">
+              Clique no botão abaixo para registrar a conclusão do seu treino!
+            </p>
+          </div>
+        )}
       </div>
-      <div className="p-4 bg-black border-t border-neutral-800 sticky bottom-0">
-          <Button fullWidth onClick={() => navigate('/final')}>{t('finishWorkout')}</Button>
+
+      <div className="p-4 bg-black/95 backdrop-blur-md border-t border-neutral-800 sticky bottom-0 z-20">
+        <Button 
+          fullWidth 
+          onClick={() => navigate('/final')}
+          className={isWorkoutAllDone ? 'ring-4 ring-primary-500/50 shadow-2xl shadow-primary-500/50 animate-pulse' : ''}
+        >
+          {t('finishWorkout')}
+        </Button>
       </div>
     </ScreenWrapper>
   );

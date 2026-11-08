@@ -121,7 +121,11 @@ Use this app as a lever for your self-esteem, start training at home and gain co
   insertSpace: { pt: "(Espaço para Inserção)", en: "(Placeholder Area)" },
   timeUp: { pt: "Tempo Esgotado!", en: "Time's Up!" },
   setFinished: { pt: "Série Concluída", en: "Set Finished" },
-  keepGoing: { pt: "se der mais de 40 seg, vá em frente!", en: "if you can go over 40s, go ahead!" }
+  keepGoing: { pt: "se der mais de 40 seg, vá em frente!", en: "if you can go over 40s, go ahead!" },
+  autoCompletedSet: { pt: "Série marcada como concluída!", en: "Set marked as completed!" },
+  nextSetReady: { pt: "Próxima Série", en: "Next Set" },
+  allSetsCompletedNotice: { pt: "3 séries concluídas! Avançando...", en: "3 sets completed! Advancing..." },
+  workoutFinishedNotice: { pt: "🏆 Treino Completo! Todas as séries finalizadas!", en: "🏆 Workout Complete! All sets finished!" }
 };
 
 export const EXERCISES: Exercise[] = [
@@ -138,7 +142,7 @@ export const EXERCISES: Exercise[] = [
     },
     quickFix: { pt: 'Mantenha o tronco ereto e respire ritmadamente.', en: 'Keep torso upright and breathe rhythmicly.' },
     compareTip: { pt: '', en: '' },
-    videoUrl: 'https://www.canva.com/design/DAG8RTJWpxU/f0aWgoOiF3sK8gRdZZrmVw/watch?utm_content=DAG8RTJWpxU&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=heb628ebf79'
+    videoUrl: '/videos/corrida-estacionada.mp4'
   },
   {
     id: 'flexoes-apoios',
@@ -153,7 +157,7 @@ export const EXERCISES: Exercise[] = [
     },
     quickFix: { pt: 'Não deixe os cotovelos abrirem excessivamente.', en: 'Don\'t let elbows flare out excessively.' },
     compareTip: { pt: '', en: '' },
-    videoUrl: 'https://www.canva.com/design/DAG8RY521Pw/oJiJEDbVUQVWJDNtblS8Yg/watch?utm_content=DAG8RY521Pw&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h3d801fcc29'
+    videoUrl: '/videos/flexoes-apoios.mp4'
   },
   {
     id: 'grupado',
@@ -168,7 +172,7 @@ export const EXERCISES: Exercise[] = [
     },
     quickFix: { pt: 'Mantenha o abdômen sempre contraído.', en: 'Keep abs always contracted.' },
     compareTip: { pt: '', en: '' },
-    videoUrl: 'https://www.canva.com/design/DAG8RRXV_Vw/WAY93dRTfn8J-MtaMmNrgg/watch?utm_content=DAG8RRXV_Vw&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hafe4ee4ccd'
+    videoUrl: '/videos/grupado.mp4'
   },
   {
     id: 'flexoes-tradicional',
@@ -183,7 +187,7 @@ export const EXERCISES: Exercise[] = [
     },
     quickFix: { pt: 'Mantenha o glúteo contraído para não arquear as costas.', en: 'Keep glutes squeezed to avoid arching back.' },
     compareTip: { pt: '', en: '' },
-    videoUrl: 'https://www.canva.com/design/DAG8RTxoiBY/ahv7EUK7iHX0UyAn0Ly8dA/edit?utm_content=DAG8RTxoiBY&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton'
+    videoUrl: '/videos/flexoes-tradicional.mp4'
   },
   {
     id: 'afundos-alternados',
@@ -198,7 +202,7 @@ export const EXERCISES: Exercise[] = [
     },
     quickFix: { pt: 'O joelho da frente não deve ultrapassar a ponta do pé.', en: 'Front knee should not go past your toes.' },
     compareTip: { pt: '', en: '' },
-    videoUrl: 'https://www.canva.com/design/DAG8RbM5bq0/akoybJZRqRRzkLxETohKQQ/watch?utm_content=DAG8RbM5bq0&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h5dd7d6e0f6'
+    videoUrl: '/videos/afundos-alternados.mp4'
   },
   {
     id: 'deslocamento-lateral',
@@ -213,7 +217,7 @@ export const EXERCISES: Exercise[] = [
     },
     quickFix: { pt: 'Não cruze os pés durante o deslocamento.', en: 'Don\'t cross your feet while moving.' },
     compareTip: { pt: '', en: '' },
-    videoUrl: 'https://www.canva.com/design/DAG8RaMbpbg/LESP5MroC1jsbctpIIDzJg/watch?utm_content=DAG8RaMbpbg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hd645a6e6c1'
+    videoUrl: '/videos/deslocamento-lateral.mp4'
   },
   {
     id: 'polichinelos',
@@ -228,7 +232,7 @@ export const EXERCISES: Exercise[] = [
     },
     quickFix: { pt: 'Atenção ao impacto: pouse suavemente.', en: 'Watch impact: land softly.' },
     compareTip: { pt: '', en: '' },
-    videoUrl: 'https://www.canva.com/design/DAG8RXhOoXg/XmLmkvnBG7s4APQCoRi-eA/watch?utm_content=DAG8RXhOoXg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h993efb51ca'
+    videoUrl: '/videos/polichinelos.mp4'
   }
 ];
 

@@ -471,25 +471,66 @@ export const TDEECalculator: React.FC<{
   );
 };
 
+// --- Sound and Haptic Helpers ---
+export const playSuccessChime = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'triangle';
+    const now = ctx.currentTime;
+    // Pleasant double chime: 659.25Hz (E5) -> 880Hz (A5)
+    osc.frequency.setValueAtTime(659.25, now);
+    osc.frequency.setValueAtTime(880, now + 0.12);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+    osc.start(now);
+    osc.stop(now + 0.38);
+  } catch (e) {
+    // Audio context may be restricted before user gesture
+  }
+};
+
+export const triggerHaptic = () => {
+  try {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([100, 50, 100]);
+    }
+  } catch (e) {}
+};
+
 // --- Timer Component ---
 export const Timer: React.FC<{ 
-  title: string; 
+  title?: string; 
   hint: string; 
-  onReachedGoal?: (reached: boolean) => void 
-}> = React.memo(({ title, hint, onReachedGoal }) => {
+  onReachedGoal?: () => void;
+  activeSetNumber?: number;
+  isAllCompleted?: boolean;
+}> = React.memo(({ title, hint, onReachedGoal, activeSetNumber = 1, isAllCompleted = false }) => {
   const [time, setTime] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [isInterval, setIsInterval] = useState(false);
   const timerRef = useRef<number | null>(null);
   const longPressTimer = useRef<number | null>(null);
   const lastClickTime = useRef<number>(0);
+  const goalTriggeredRef = useRef<boolean>(false);
 
   const totalSeconds = Math.floor(time / 1000);
 
   // Notifica o pai quando atinge o objetivo de 40s de execução
   useEffect(() => {
-    if (totalSeconds >= 40 && !isInterval) {
-      onReachedGoal?.(true);
+    if (totalSeconds >= 40 && !isInterval && !goalTriggeredRef.current) {
+      goalTriggeredRef.current = true;
+      playSuccessChime();
+      triggerHaptic();
+      onReachedGoal?.();
     }
   }, [totalSeconds, isInterval, onReachedGoal]);
 
@@ -506,7 +547,7 @@ export const Timer: React.FC<{
         setTime(0);
         setIsActive(true);
         lastClickTime.current = 0;
-        if (!nextState) onReachedGoal?.(false);
+        goalTriggeredRef.current = false;
         return;
       }
     }
@@ -520,7 +561,7 @@ export const Timer: React.FC<{
       setTime(0);
       setIsActive(false);
       setIsInterval(false);
-      onReachedGoal?.(false); 
+      goalTriggeredRef.current = false;
     }, 800);
   };
 
@@ -528,6 +569,14 @@ export const Timer: React.FC<{
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
     }
+  };
+
+  const resetForNextSet = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTime(0);
+    setIsActive(false);
+    setIsInterval(false);
+    goalTriggeredRef.current = false;
   };
 
   useEffect(() => {
@@ -550,8 +599,8 @@ export const Timer: React.FC<{
     if (s <= 18) return "agora está ficando sério";
     if (s <= 24) return "agora o bicho vai pegar!";
     if (s <= 35) return "mantenha seu melhor, mas respeite seus limites!";
-    if (s <= 40) return "QUASE LÁ, NÃO PARA!";
-    return "DÊ DOIS TOQUES PARA O INTERVALO";
+    if (s < 40) return "QUASE LÁ, NÃO PARA!";
+    return `SÉRIE ${activeSetNumber} CONCLUÍDA! DESCANSE 30s`;
   };
 
   const formatTime = (ms: number) => {
@@ -579,16 +628,31 @@ export const Timer: React.FC<{
         onMouseUp={handleMouseUp}
         onTouchStart={handleMouseDown}
         onTouchEnd={handleMouseUp}
-        className={`bg-surface border-2 ${isInterval ? 'border-green-500' : (totalSeconds >= 40 ? 'border-primary-500' : 'border-neutral-800')} rounded-full px-8 py-3 flex items-center justify-center cursor-pointer active:scale-95 transition-all shadow-lg shadow-black/40`}
+        className={`bg-surface border-2 ${isInterval ? 'border-green-500 shadow-green-500/20' : (totalSeconds >= 40 ? 'border-primary-500 shadow-primary-500/20' : 'border-neutral-800')} rounded-full px-8 py-3.5 flex items-center justify-center cursor-pointer active:scale-95 transition-all shadow-lg shadow-black/40`}
       >
-        <Clock className={`w-5 h-5 mr-3 ${isInterval ? 'text-green-500' : (isActive ? 'text-primary-500' : 'text-neutral-500')} transition-colors`} />
-        <span className={`text-3xl font-mono font-bold ${isInterval ? 'text-green-500' : (totalSeconds <= 40 ? 'text-white' : 'text-primary-500')} tabular-nums transition-colors`}>
+        <Clock className={`w-5 h-5 mr-3 ${isInterval ? 'text-green-500' : (isActive ? 'text-primary-500 animate-pulse' : 'text-neutral-500')} transition-colors`} />
+        <span className={`text-3xl font-mono font-bold ${isInterval ? 'text-green-500' : (totalSeconds < 40 ? 'text-white' : 'text-primary-500')} tabular-nums transition-colors`}>
           {formatTime(time)}
         </span>
       </div>
-      <p className="text-[10px] uppercase tracking-widest text-neutral-600 font-bold mt-1">
-        {isInterval ? "Toque duplo p/ Voltar" : hint}
+      
+      <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold mt-1 text-center">
+        {isInterval ? "Toque duplo p/ Voltar ao Exercício" : hint}
       </p>
+
+      {/* Quick Action when 40s is reached and more sets remain */}
+      {totalSeconds >= 40 && !isInterval && !isAllCompleted && (
+        <div className="mt-2 flex gap-2 animate-in fade-in zoom-in duration-200">
+          <button
+            type="button"
+            onClick={resetForNextSet}
+            className="px-4 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-primary-500/20 active:scale-95 transition-all"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Zerar Cronômetro p/ Próxima Série
+          </button>
+        </div>
+      )}
     </div>
   );
 });
@@ -599,33 +663,40 @@ export const SetCard: React.FC<{
   serieLabel: string;
   executionTimeLabel: string;
   intervalLabel?: string;
-}> = ({ index, serieLabel, executionTimeLabel, intervalLabel }) => {
-  const [isDone, setIsDone] = useState(false);
-
+  isDone?: boolean;
+  onToggle?: () => void;
+}> = ({ index, serieLabel, executionTimeLabel, intervalLabel, isDone = false, onToggle }) => {
   return (
-    <div 
-      onClick={() => setIsDone(!isDone)}
-      className={`p-4 rounded-xl border-2 transition-all cursor-pointer select-none flex flex-col gap-1 items-center justify-center ${
+    <button 
+      type="button"
+      onClick={onToggle}
+      className={`p-3 sm:p-4 rounded-xl border-2 transition-all cursor-pointer select-none flex flex-col gap-1 items-center justify-center w-full relative overflow-hidden active:scale-95 ${
         isDone 
-          ? 'bg-primary-500 border-primary-500 shadow-md shadow-primary-500/20' 
-          : 'bg-surface border-neutral-800'
+          ? 'bg-primary-500 border-primary-500 shadow-lg shadow-primary-500/30 text-white' 
+          : 'bg-surface border-neutral-800 hover:border-neutral-700 text-neutral-400'
       }`}
     >
       <span className={`text-xs font-black uppercase tracking-tighter text-center ${isDone ? 'text-white' : 'text-primary-500'}`}>
         {serieLabel} {index + 1}
       </span>
       <div className="flex flex-col items-center text-center mt-1 space-y-0.5">
-        <span className={`text-[9px] font-bold uppercase tracking-tight ${isDone ? 'text-white/90' : 'text-neutral-400'}`}>
+        <span className={`text-[9px] font-bold uppercase tracking-tight leading-tight ${isDone ? 'text-white/95' : 'text-neutral-400'}`}>
           {executionTimeLabel}
         </span>
         {intervalLabel && (
-          <span className={`text-[8px] font-medium uppercase tracking-tighter ${isDone ? 'text-white/70' : 'text-neutral-500'}`}>
+          <span className={`text-[8px] font-medium uppercase tracking-tighter leading-tight ${isDone ? 'text-white/80' : 'text-neutral-500'}`}>
             {intervalLabel}
           </span>
         )}
       </div>
-      {isDone && <CheckCircle className="w-4 h-4 text-white mt-1 animate-in zoom-in" />}
-    </div>
+      <div className="mt-1 flex items-center justify-center">
+        {isDone ? (
+          <CheckCircle className="w-4 h-4 text-white fill-white/20 animate-in zoom-in duration-200" />
+        ) : (
+          <div className="w-4 h-4 rounded-full border border-neutral-700" />
+        )}
+      </div>
+    </button>
   );
 };
 
@@ -666,8 +737,6 @@ export const Button: React.FC<ButtonProps> = ({
 // --- Video Player ---
 interface VideoPlayerProps {
   videoUrl?: string;
-  isFinished?: boolean;
-  onReset?: () => void;
   labels?: {
     loading: string;
     demo: string;
@@ -678,7 +747,7 @@ interface VideoPlayerProps {
   };
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ videoUrl, isFinished, onReset, labels }) => {
+export const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ videoUrl, labels }) => {
   const [loading, setLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -687,16 +756,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ videoUrl, i
     loading: labels?.loading || "Carregando...",
     demo: labels?.demo || "Vídeo Demonstrativo",
     placeholder: labels?.placeholder || "(Espaço para Inserção)",
-    timeUp: labels?.timeUp || "Tempo Esgotado!",
-    setFinished: labels?.setFinished || "Série Concluída",
-    keepGoing: labels?.keepGoing || "se der mais de 40 seg, vá em frente!"
   }), [labels]);
 
-  useEffect(() => {
-    if (videoUrl) setLoading(true);
-  }, [videoUrl]);
-
-  const togglePlay = useCallback(() => {
+  const togglePlay = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
       videoRef.current.play().catch(() => {});
@@ -707,22 +770,56 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ videoUrl, i
     }
   }, []);
 
+  // Check if it is a local direct video file or mp4
+  const isDirectVideo = !!videoUrl && (
+    videoUrl.startsWith('/') ||
+    videoUrl.endsWith('.mp4') ||
+    videoUrl.includes('.mp4?') ||
+    videoUrl.includes('/videos/')
+  );
+
+  // Eager autoplay logic: as soon as the accordion opens and component mounts, play video automatically
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || isFinished || isPaused) return;
-    const forcePlay = () => {
-      if (video.paused && !isFinished && !isPaused) {
-        video.play().catch(() => {});
+    if (!video || !isDirectVideo) return;
+
+    setLoading(true);
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+
+    const tryAutoplay = () => {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPaused(false);
+            setLoading(false);
+          })
+          .catch(() => {
+            // If browser autoplay policy held it, mark paused
+            setIsPaused(true);
+            setLoading(false);
+          });
       }
     };
-    video.addEventListener('stalled', forcePlay);
-    video.addEventListener('waiting', forcePlay);
-    forcePlay();
-    return () => {
-      video.removeEventListener('stalled', forcePlay);
-      video.removeEventListener('waiting', forcePlay);
+
+    tryAutoplay();
+
+    const handleCanPlay = () => {
+      setLoading(false);
+      tryAutoplay();
     };
-  }, [videoUrl, isFinished, isPaused]);
+
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('loadeddata', handleCanPlay);
+
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('loadeddata', handleCanPlay);
+    };
+  }, [videoUrl, isDirectVideo]);
 
   if (!videoUrl) {
     return (
@@ -733,27 +830,50 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ videoUrl, i
     );
   }
 
-  if (isFinished) {
+  // Direct MP4 video playback (optimized local video file)
+  if (isDirectVideo) {
     return (
-      <div className="w-full aspect-video bg-neutral-900 rounded-xl flex flex-col items-center justify-center text-primary-500 border-2 border-primary-500/30 animate-in fade-in zoom-in duration-500">
-        <Trophy className="w-12 h-12 mb-2 animate-bounce" />
-        <h3 className="text-lg font-black uppercase tracking-tighter text-white">{text.timeUp}</h3>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mt-1">{text.setFinished}</p>
-        <p className="text-[11px] font-black uppercase tracking-tight text-primary-500 mt-3 px-6 text-center italic">
-          "{text.keepGoing}"
-        </p>
-        {onReset && (
-          <button 
-            onClick={onReset}
-            className="mt-4 text-[9px] uppercase font-bold text-neutral-600 hover:text-white transition-colors underline"
-          >
-            Ver vídeo novamente
-          </button>
+      <div 
+        className="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl relative cursor-pointer group select-none"
+        onClick={togglePlay}
+      >
+        <video 
+          ref={videoRef}
+          src={videoUrl}
+          className="w-full h-full object-contain bg-black"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          onPlay={() => setIsPaused(false)}
+          onPause={() => setIsPaused(true)}
+          onLoadedData={() => setLoading(false)}
+        />
+        
+        {/* Play / Pause Overlay Icon */}
+        <div className={`absolute inset-0 flex items-center justify-center bg-black/25 transition-opacity duration-200 pointer-events-none ${isPaused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+          {isPaused ? (
+            <div className="w-16 h-16 rounded-full bg-primary-500/90 text-white flex items-center justify-center shadow-lg shadow-black/50 backdrop-blur-sm animate-in zoom-in-75">
+              <Play className="w-8 h-8 fill-current ml-1" />
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-black/40 text-white/80 border border-white/20 flex items-center justify-center backdrop-blur-sm">
+              <PauseCircle className="w-8 h-8" />
+            </div>
+          )}
+        </div>
+
+        {loading && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+          </div>
         )}
       </div>
     );
   }
 
+  // Fallback for any iframe embeds (YouTube / Canva / Drive)
   const getDriveId = (url: string) => {
     const match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
     return match ? match[1] : null;
@@ -762,60 +882,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ videoUrl, i
   const isDrive = videoUrl.includes('drive.google.com');
   const driveId = isDrive ? getDriveId(videoUrl) : null;
 
-  if (isDrive && driveId) {
-    const directStreamUrl = `https://drive.google.com/uc?export=download&id=${driveId}`;
-    return (
-      <div 
-        className="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl relative cursor-pointer group"
-        onClick={togglePlay}
-      >
-        <video 
-            ref={videoRef}
-            src={directStreamUrl}
-            className="w-full h-full object-contain bg-black"
-            autoPlay
-            muted
-            loop
-            playsInline
-            onLoadedData={() => setLoading(false)}
-            onPlay={() => setIsPaused(false)}
-            onPause={() => setIsPaused(true)}
-        />
-        <div className={`absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300 ${isPaused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-            {isPaused ? (
-              <Play className="w-16 h-16 text-white fill-current opacity-80" />
-            ) : (
-              <div className="w-16 h-16 border-4 border-white/30 rounded-full flex items-center justify-center">
-                 <div className="w-6 h-6 flex gap-1">
-                    <div className="w-2 h-full bg-white rounded-full"></div>
-                    <div className="w-2 h-full bg-white rounded-full"></div>
-                 </div>
-              </div>
-            )}
-        </div>
-        {loading && (
-             <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50">
-                <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
-             </div>
-        )}
-      </div>
-    );
-  }
-
   const embedUrl = (() => {
     let url = null;
     if (videoUrl.includes('youtube') || videoUrl.includes('youtu.be')) {
-        const match = videoUrl.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-        if (match) {
-          const videoId = match[1];
-          url = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
-        }
+      const match = videoUrl.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      if (match) {
+        const videoId = match[1];
+        url = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
+      }
     } else if (videoUrl.includes('canva.com')) {
-        url = videoUrl.replace(/\/watch.*/, '/view?embed').replace(/\/edit.*/, '/view?embed');
-        const params = "autoplay=1&muted=1&loop=1&controls=1";
-        url += url.includes('?') ? `&${params}` : `?${params}`;
+      url = videoUrl.replace(/\/watch.*/, '/view?embed').replace(/\/edit.*/, '/view?embed');
+      const params = "autoplay=1&muted=1&loop=1&controls=1";
+      url += url.includes('?') ? `&${params}` : `?${params}`;
     } else if (driveId) {
-        url = `https://drive.google.com/file/d/${driveId}/preview`;
+      url = `https://drive.google.com/file/d/${driveId}/preview`;
     }
     return url;
   })();
@@ -830,22 +910,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ videoUrl, i
           title="Exercise Content"
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          allowFullScreen
           className="w-full h-full object-cover scale-[1.01]"
           onLoad={() => setLoading(false)}
         ></iframe>
         {loading && (
-             <div className="absolute inset-0 z-30 flex items-center justify-center bg-surface pointer-events-none">
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
-                  <span className="text-xs text-neutral-400 font-bold uppercase tracking-widest">{text.loading}</span>
-                </div>
-             </div>
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-surface pointer-events-none">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+              <span className="text-xs text-neutral-400 font-bold uppercase tracking-widest">{text.loading}</span>
+            </div>
+          </div>
         )}
       </div>
     );
   }
   return null;
-}, (prevProps, nextProps) => prevProps.videoUrl === nextProps.videoUrl && prevProps.isFinished === nextProps.isFinished);
+}, (prevProps, nextProps) => prevProps.videoUrl === nextProps.videoUrl);
 
 // --- Layout Wrapper ---
 export const ScreenWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
